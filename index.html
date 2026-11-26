@@ -255,6 +255,29 @@ a.btn { text-decoration: none; display: inline-block; color: inherit; }
 .panel { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 @media (min-width: 1200px) {
 }
+/* Secciones: Encargos USA y Artículos navideños */
+.secbar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; margin: 4px 0 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.secbar button { border: 0; background: transparent; border-radius: 10px; padding: 11px 8px; font-weight: 700; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; color: var(--muted); }
+.secbar button[aria-pressed="true"] { background: linear-gradient(#DCC293, #B08F63); color: var(--accent-ink); }
+@media (min-width: 900px) { .secbar { max-width: 520px; } }
+body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mode #banner, body.nav-mode #clientbar, body.nav-mode #util, body.nav-mode #list, body.nav-mode #overlay { display: none !important; }
+.nav { padding-block: 4px 120px; display: flex; flex-direction: column; gap: 18px; }
+.nav .navlede { margin: 0; color: var(--muted); }
+.ntabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg); padding-block: 8px; display: flex; }
+.ntabs .vtoggle { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); }
+.ntabs .vtoggle button { padding: 10px 4px; font-size: 14px; }
+.inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.icard { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.icard .ih { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.icard h3 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.2; overflow-wrap: anywhere; }
+.stock { flex: none; text-align: right; font-family: var(--font-display); font-weight: 800; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.stock small { display: block; font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 3px; }
+.stock.low { color: var(--st2-fg); } .stock.out { color: var(--danger); }
+.igrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.igrid span { color: var(--muted); } .igrid b { font-weight: 600; }
+.icard .btn { align-self: flex-start; padding: 8px 14px; }
+.ok { color: var(--ok); }
+@media (max-width: 600px) { .nav .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .nav .kpi { padding: 12px; } .nav .kpi dd { font-size: 17px; } .nav .kpi.net, .nav .kpi.stockk { grid-column: 1 / -1; } .nav .kpi.net dd { font-size: 24px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 </style>
 
@@ -267,6 +290,13 @@ a.btn { text-decoration: none; display: inline-block; color: inherit; }
     </div>
     <dl class="summary" id="summary"></dl>
   </header>
+</div>
+
+<div class="wrap">
+  <nav class="secbar" id="secbar" aria-label="Sección">
+    <button type="button" data-sec="usa" aria-pressed="true">Encargos USA</button>
+    <button type="button" data-sec="nav" aria-pressed="false">Artículos navideños</button>
+  </nav>
 </div>
 
 <div class="toolbar">
@@ -321,6 +351,76 @@ a.btn { text-decoration: none; display: inline-block; color: inherit; }
       <div id="plist"></div>
     </div>
     <p class="hint" id="unote"></p>
+  </section>
+  <section class="nav" id="nav" hidden aria-label="Artículos navideños">
+    <p class="navlede">Inversión en artículos navideños: registra lo que compras, lo que vendes y tus gastos. El inventario y la utilidad se calculan solos.</p>
+    <div class="kpis" id="n-kpis"></div>
+    <div class="ntabs"><div class="vtoggle" id="n-tabs" role="group" aria-label="Apartado">
+      <button type="button" data-t="inv" aria-pressed="true">Inventario</button>
+      <button type="button" data-t="comp" aria-pressed="false">Compras</button>
+      <button type="button" data-t="vent" aria-pressed="false">Ventas</button>
+      <button type="button" data-t="gas" aria-pressed="false">Gastos</button>
+    </div></div>
+    <p class="hint" id="n-ro" hidden></p>
+
+    <div id="n-inv"><div class="inv" id="n-invlist"></div></div>
+
+    <div class="ucols" id="n-comp" hidden>
+      <div class="box n-w"><h2>Registrar compra</h2>
+        <form class="f" id="nc-form" novalidate>
+          <div class="fld"><label for="nc-prod">Producto</label><input id="nc-prod" maxlength="80" autocomplete="off" list="n-prods" placeholder="Ej. Árbol 1,80 m"></div>
+          <div class="two">
+            <div class="fld"><label for="nc-fecha">Fecha</label><input id="nc-fecha" type="date"></div>
+            <div class="fld"><label for="nc-cant">Cantidad</label><input id="nc-cant" type="number" inputmode="numeric" min="1" step="1" placeholder="Ej. 12"></div>
+          </div>
+          <div class="two">
+            <div class="fld"><label for="nc-unit">Costo por unidad</label><input id="nc-unit" type="number" inputmode="decimal" min="0" step="any" placeholder="COP"></div>
+            <div class="fld"><label for="nc-tot">Total pagado</label><input id="nc-tot" type="number" inputmode="decimal" min="0" step="any" placeholder="COP"></div>
+          </div>
+          <p class="hint">Llena el costo por unidad o el total pagado; el otro se calcula solo.</p>
+          <div class="fld"><label for="nc-nota">Proveedor o nota</label><input id="nc-nota" maxlength="120" placeholder="Opcional"></div>
+          <p class="err" id="nc-err" role="alert" hidden></p>
+          <button type="submit" class="btn primary" id="nc-save">Agregar al inventario</button>
+        </form>
+      </div>
+      <div class="box"><h2>Compras</h2><div id="n-clist"></div></div>
+    </div>
+
+    <div class="ucols" id="n-vent" hidden>
+      <div class="box n-w"><h2>Registrar venta</h2>
+        <form class="f" id="nv-form" novalidate>
+          <div class="fld"><label for="nv-prod">Producto</label><select id="nv-prod"></select></div>
+          <div class="two">
+            <div class="fld"><label for="nv-fecha">Fecha</label><input id="nv-fecha" type="date"></div>
+            <div class="fld"><label for="nv-cant">Cantidad</label><input id="nv-cant" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+          </div>
+          <div class="fld"><label for="nv-precio">Precio de venta por unidad</label><input id="nv-precio" type="number" inputmode="decimal" min="0" step="any" placeholder="COP"></div>
+          <div class="fld"><label for="nv-cli">Cliente o nota</label><input id="nv-cli" maxlength="120" placeholder="Opcional"></div>
+          <div class="saldo-live"><span>Total de la venta</span><span id="nv-total"></span></div>
+          <div class="saldo-live"><span>Utilidad de esta venta</span><span id="nv-util"></span></div>
+          <p class="err" id="nv-err" role="alert" hidden></p>
+          <button type="submit" class="btn primary" id="nv-save">Registrar venta</button>
+        </form>
+      </div>
+      <div class="box"><h2>Ventas</h2><div id="n-vlist"></div></div>
+    </div>
+
+    <div class="ucols" id="n-gas" hidden>
+      <div class="box n-w"><h2>Agregar gasto</h2>
+        <form class="f" id="ng-form" novalidate>
+          <div class="two">
+            <div class="fld"><label for="ng-fecha">Fecha</label><input id="ng-fecha" type="date"></div>
+            <div class="fld"><label for="ng-cat">Tipo de gasto</label><select id="ng-cat"></select></div>
+          </div>
+          <div class="fld"><label for="ng-monto">Monto en pesos (COP)</label><input id="ng-monto" type="number" inputmode="decimal" min="0" step="any" placeholder="Ej. 20000"></div>
+          <div class="fld"><label for="ng-nota">Nota</label><input id="ng-nota" maxlength="120" placeholder="Ej. Bolsas de regalo"></div>
+          <p class="err" id="ng-err" role="alert" hidden></p>
+          <button type="submit" class="btn primary" id="ng-save">Agregar gasto</button>
+        </form>
+      </div>
+      <div class="box"><h2>Gastos</h2><div class="cats" id="n-gcats"></div><div id="n-glist"></div></div>
+    </div>
+    <datalist id="n-prods"></datalist>
   </section>
   <main class="grid" id="list" aria-live="polite"></main>
 </div>
@@ -1404,4 +1504,260 @@ a.btn { text-decoration: none; display: inline-block; color: inherit; }
   }).catch(function () { loaded = true; renderList(); });
 })();
 </script>
+<script>
+/* ---------- Sección Artículos navideños: inventario, compras, ventas y gastos ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var num = function (v) { var n = Number(v); return isFinite(n) ? n : 0; };
+  var keyOf = function (s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); };
+  function money(n) { try { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n); } catch (e) { return 'COP ' + Math.round(n); } }
+  function fmtNum(n) { try { return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(n); } catch (e) { return String(n); } }
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function today() { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function fmtDate(s) { var p = String(s || '').split('-'); if (p.length !== 3) return ''; return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }); }
+  function store(k, v) { try { if (v == null) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  var und = function (n) { return fmtNum(n) + (n === 1 ? ' und' : ' und'); };
 
+  var CATS = ['Transporte', 'Empaque', 'Publicidad', 'Puesto o local', 'Otros'];
+  var db = null, canWrite = true, busy = false, started = false;
+  var compras = [], ventas = [], gastos = [];
+  var tab = store('srNavTab') || 'inv', arm = null;
+
+  /* ---------- Cambio de sección ---------- */
+  function setSec(s) {
+    document.body.classList.toggle('nav-mode', s === 'nav');
+    $('nav').hidden = s !== 'nav';
+    Array.prototype.forEach.call($('secbar').querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-sec') === s)); });
+    store('srSeccion', s);
+    if (s === 'nav') { start(); render(); }
+  }
+  $('secbar').addEventListener('click', function (e) { var b = e.target.closest('[data-sec]'); if (b) { setSec(b.getAttribute('data-sec')); window.scrollTo(0, 0); } });
+
+  /* ---------- Cálculos ---------- */
+  function products() {
+    var map = {};
+    function p(k, name) { return map[k] || (map[k] = { key: k, nombre: name, comprado: 0, invertido: 0, vendido: 0, ventas: 0, ultimoPrecio: 0, ultimaVenta: 0, ultimaCompra: 0 }); }
+    compras.forEach(function (c) { var x = p(c.key || keyOf(c.producto), c.producto); x.comprado += num(c.cantidad); x.invertido += num(c.total); x.ultimaCompra = Math.max(x.ultimaCompra, c.creado || 0); });
+    ventas.forEach(function (v) {
+      var x = p(v.key || keyOf(v.producto), v.producto); x.vendido += num(v.cantidad); x.ventas += num(v.total);
+      if ((v.creado || 0) >= x.ultimaVenta) { x.ultimaVenta = v.creado || 0; x.ultimoPrecio = num(v.precio); }
+    });
+    return Object.keys(map).map(function (k) {
+      var x = map[k];
+      x.stock = x.comprado - x.vendido;
+      x.costoProm = x.comprado > 0 ? x.invertido / x.comprado : 0;
+      x.costoVendido = x.vendido * x.costoProm;
+      x.utilidad = x.ventas - x.costoVendido;
+      return x;
+    }).sort(function (a, b) { return (b.stock > 0) - (a.stock > 0) || a.nombre.localeCompare(b.nombre, 'es'); });
+  }
+  function prodByKey(k) { return products().filter(function (p) { return p.key === k; })[0] || null; }
+
+  /* ---------- Pintar ---------- */
+  function kpi(label, value, cls, extra) { return '<dl class="kpi' + (cls ? ' ' + cls : '') + '"><dt>' + label + '</dt><dd>' + value + '</dd>' + (extra ? '<p class="hint">' + extra + '</p>' : '') + '</dl>'; }
+  function sign(n) { return '<span class="' + (n < 0 ? 'neg' : '') + '">' + esc(money(n)) + '</span>'; }
+
+  function render() {
+    if ($('nav').hidden) return;
+    var ps = products(), inv = 0, vend = 0, cv = 0, stockU = 0, stockV = 0, unidV = 0;
+    ps.forEach(function (p) { inv += p.invertido; vend += p.ventas; cv += p.costoVendido; unidV += p.vendido; if (p.stock > 0) { stockU += p.stock; stockV += p.stock * p.costoProm; } });
+    var gtot = gastos.reduce(function (a, g) { return a + num(g.monto); }, 0);
+    var bruta = vend - cv, neta = bruta - gtot, rec = inv > 0 ? vend / inv * 100 : 0, margen = vend > 0 ? bruta / vend * 100 : 0;
+    $('n-kpis').innerHTML =
+      kpi('Invertido', esc(money(inv)), '', compras.length + (compras.length === 1 ? ' compra' : ' compras')) +
+      kpi('Ventas', esc(money(vend)), '', und(unidV) + ' vendidas · recuperado ' + esc(fmtNum(rec)) + '%') +
+      kpi('Utilidad bruta', sign(bruta), '', 'Margen ' + esc(fmtNum(margen)) + '%') +
+      kpi('Gastos', esc(money(gtot)), '', gastos.length + (gastos.length === 1 ? ' gasto' : ' gastos')) +
+      kpi('Inventario', esc(money(stockV)), 'stockk', und(stockU) + ' en bodega, a costo') +
+      kpi('Utilidad neta', sign(neta), 'net', 'Ventas − costo de lo vendido − gastos');
+
+    Array.prototype.forEach.call($('n-tabs').querySelectorAll('button'), function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-t') === tab)); });
+    ['inv', 'comp', 'vent', 'gas'].forEach(function (t) { $('n-' + t).hidden = t !== tab; });
+    var canW = !!db && canWrite;
+    Array.prototype.forEach.call(document.querySelectorAll('#nav .n-w'), function (el) { el.hidden = !canW; });
+    var ro = $('n-ro'); ro.hidden = canW || tab === 'inv';
+    ro.textContent = !db ? 'Abre la página desde Claude con tu sesión iniciada para registrar movimientos.' : 'Con esta cuenta solo puedes ver la información.';
+
+    $('n-prods').innerHTML = ps.map(function (p) { return '<option value="' + esc(p.nombre) + '">'; }).join('');
+
+    // Inventario
+    $('n-invlist').innerHTML = ps.length ? ps.map(function (p) {
+      var cls = p.stock <= 0 ? 'out' : p.stock <= 2 ? 'low' : '';
+      return '<article class="icard"><div class="ih"><h3>' + esc(p.nombre) + '</h3><div class="stock ' + cls + '">' + esc(fmtNum(p.stock)) + '<small>' + (p.stock <= 0 ? 'Agotado' : 'Disponibles') + '</small></div></div>' +
+        '<div class="igrid"><span>Comprado</span><b>' + esc(und(p.comprado)) + '</b><span>Costo promedio</span><b>' + esc(money(p.costoProm)) + '</b>' +
+        '<span>Vendido</span><b>' + esc(und(p.vendido)) + '</b><span>Ventas</span><b>' + esc(money(p.ventas)) + '</b>' +
+        '<span>Utilidad</span><b class="' + (p.utilidad < 0 ? 'neg' : p.vendido ? 'ok' : '') + '">' + esc(money(p.utilidad)) + '</b><span>Invertido</span><b>' + esc(money(p.invertido)) + '</b></div>' +
+        (canW && p.stock > 0 ? '<button type="button" class="btn" data-sell="' + esc(p.key) + '">Vender</button>' : '') + '</article>';
+    }).join('') : '<div class="empty"><h2>El inventario está vacío</h2><p>' + (canW ? 'Ve a «Compras» y registra lo primero que compraste: producto, cantidad y precio. Aparecerá aquí con sus unidades disponibles.' : 'Cuando se registre la primera compra aparecerá aquí.') + '</p></div>';
+
+    // Compras
+    var cs = compras.slice().sort(byDate);
+    $('n-clist').innerHTML = cs.length ? cs.map(function (c) {
+      return '<div class="gitem"><div class="gm"><b>' + esc(c.producto) + '</b><span>' + esc(fmtDate(c.fecha)) + ' · ' + esc(und(num(c.cantidad))) + ' × ' + esc(money(num(c.costo))) + (c.nota ? ' · ' + esc(c.nota) : '') + '</span></div>' +
+        '<span class="ga">' + esc(money(num(c.total))) + '</span>' + delBtn('c', c.id, canW) + '</div>';
+    }).join('') : '<p class="hint">Aún no hay compras.</p>';
+
+    // Ventas
+    fillSellSelect(ps);
+    var vs = ventas.slice().sort(byDate);
+    $('n-vlist').innerHTML = vs.length ? vs.map(function (v) {
+      return '<div class="gitem"><div class="gm"><b>' + esc(v.producto) + '</b><span>' + esc(fmtDate(v.fecha)) + ' · ' + esc(und(num(v.cantidad))) + ' × ' + esc(money(num(v.precio))) + (v.cliente ? ' · ' + esc(v.cliente) : '') + '</span></div>' +
+        '<span class="ga">' + esc(money(num(v.total))) + '</span>' + delBtn('v', v.id, canW) + '</div>';
+    }).join('') : '<p class="hint">Aún no hay ventas.</p>';
+    updateLive();
+
+    // Gastos
+    var porCat = {};
+    gastos.forEach(function (g) { var c = g.categoria || 'Otros'; porCat[c] = (porCat[c] || 0) + num(g.monto); });
+    $('n-gcats').innerHTML = Object.keys(porCat).map(function (c) { return '<span>' + esc(c) + ' <b>' + esc(money(porCat[c])) + '</b></span>'; }).join('');
+    var gs = gastos.slice().sort(byDate);
+    $('n-glist').innerHTML = gs.length ? gs.map(function (g) {
+      return '<div class="gitem"><div class="gm"><b>' + esc(g.categoria || 'Otros') + '</b><span>' + esc(fmtDate(g.fecha)) + (g.nota ? ' · ' + esc(g.nota) : '') + '</span></div>' +
+        '<span class="ga">' + esc(money(num(g.monto))) + '</span>' + delBtn('g', g.id, canW) + '</div>';
+    }).join('') : '<p class="hint">Aún no hay gastos. Agrega transporte, empaque, publicidad u otros para ver tu utilidad neta.</p>';
+  }
+  function byDate(a, b) { return String(b.fecha).localeCompare(String(a.fecha)) || (b.creado || 0) - (a.creado || 0); }
+  function delBtn(t, id, canW) { return canW ? '<button type="button" data-del="' + t + ':' + esc(id) + '">' + (arm === t + ':' + id ? 'Toca otra vez' : 'Eliminar') + '</button>' : ''; }
+
+  function fillSellSelect(ps) {
+    var sel = $('nv-prod'), cur = sel.value;
+    var avail = ps.filter(function (p) { return p.stock > 0; });
+    sel.innerHTML = avail.length ? '<option value="">Elige un producto</option>' + avail.map(function (p) {
+      return '<option value="' + esc(p.key) + '">' + esc(p.nombre) + ' (' + esc(fmtNum(p.stock)) + ' disp.)</option>';
+    }).join('') : '<option value="">No hay productos con unidades disponibles</option>';
+    if (cur && avail.some(function (p) { return p.key === cur; })) sel.value = cur;
+  }
+  function updateLive() {
+    var p = prodByKey($('nv-prod').value), q = num($('nv-cant').value), pr = num($('nv-precio').value);
+    var tot = q * pr;
+    $('nv-total').textContent = money(tot);
+    var u = $('nv-util');
+    if (p && q > 0 && pr > 0) { var ut = tot - q * p.costoProm; u.textContent = money(ut); u.style.color = ut < 0 ? 'var(--danger)' : 'var(--ok)'; }
+    else { u.textContent = '—'; u.style.color = ''; }
+  }
+
+  /* ---------- Guardar ---------- */
+  function err(id, m) { var e = $(id); e.textContent = m; e.hidden = !m; }
+  function writeError(e) {
+    if (e && e.code === 'invalid_argument') { canWrite = false; render(); return 'Esta cuenta no puede guardar cambios.'; }
+    if (e && e.code === 'quota_exceeded') return 'Se llenó el espacio de la base de datos.';
+    if (e && e.code === 'resource_exhausted') return 'Demasiadas acciones seguidas. Espera un momento.';
+    return 'No se pudo guardar. Revisa la conexión e inténtalo de nuevo.';
+  }
+  function save(col, data, btnId, errId, done) {
+    if (!db || !canWrite || busy) return;
+    busy = true; var btn = $(btnId); btn.disabled = true;
+    data.creado = Date.now();
+    db.collection(col).doc().set(data).then(function () { busy = false; btn.disabled = false; done(); }, function (e) { busy = false; btn.disabled = false; err(errId, writeError(e)); });
+  }
+
+  function syncCost(from) {
+    var q = num($('nc-cant').value), u = $('nc-unit'), t = $('nc-tot');
+    if (q <= 0) return;
+    if (from === 'unit' && u.value !== '') t.value = Math.round(num(u.value) * q * 100) / 100;
+    else if (from === 'tot' && t.value !== '') u.value = Math.round(num(t.value) / q * 100) / 100;
+    else if (from === 'cant') { if (u.value !== '') t.value = Math.round(num(u.value) * q * 100) / 100; else if (t.value !== '') u.value = Math.round(num(t.value) / q * 100) / 100; }
+  }
+  $('nc-unit').addEventListener('input', function () { syncCost('unit'); });
+  $('nc-tot').addEventListener('input', function () { syncCost('tot'); });
+  $('nc-cant').addEventListener('input', function () { syncCost('cant'); });
+
+  $('nc-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('nc-prod').value.replace(/\s+/g, ' ').trim(), q = num($('nc-cant').value), tot = num($('nc-tot').value), unit = num($('nc-unit').value);
+    if (!name) { err('nc-err', 'Escribe el nombre del producto.'); $('nc-prod').focus(); return; }
+    if (q <= 0) { err('nc-err', 'Escribe la cantidad que compraste.'); $('nc-cant').focus(); return; }
+    if (tot <= 0 && unit > 0) tot = unit * q;
+    if (tot <= 0) { err('nc-err', 'Escribe el costo por unidad o el total pagado.'); $('nc-unit').focus(); return; }
+    if (!$('nc-fecha').value) { err('nc-err', 'Elige la fecha.'); return; }
+    err('nc-err', '');
+    var k = keyOf(name), ex = prodByKey(k);
+    save('nav_compras', { producto: ex ? ex.nombre : name, key: k, cantidad: q, costo: tot / q, total: tot, fecha: $('nc-fecha').value, nota: $('nc-nota').value.trim() }, 'nc-save', 'nc-err', function () {
+      ['nc-prod', 'nc-cant', 'nc-unit', 'nc-tot', 'nc-nota'].forEach(function (id) { $(id).value = ''; });
+      $('nc-prod').focus();
+    });
+  });
+
+  $('nv-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var p = prodByKey($('nv-prod').value), q = num($('nv-cant').value), pr = num($('nv-precio').value);
+    if (!p) { err('nv-err', 'Elige el producto que vendiste.'); $('nv-prod').focus(); return; }
+    if (q <= 0) { err('nv-err', 'Escribe la cantidad vendida.'); $('nv-cant').focus(); return; }
+    if (q > p.stock) { err('nv-err', 'Solo hay ' + fmtNum(p.stock) + ' unidades disponibles de este producto.'); $('nv-cant').focus(); return; }
+    if (pr <= 0) { err('nv-err', 'Escribe el precio de venta por unidad.'); $('nv-precio').focus(); return; }
+    if (!$('nv-fecha').value) { err('nv-err', 'Elige la fecha.'); return; }
+    err('nv-err', '');
+    save('nav_ventas', { producto: p.nombre, key: p.key, cantidad: q, precio: pr, total: q * pr, costoUnit: p.costoProm, fecha: $('nv-fecha').value, cliente: $('nv-cli').value.trim() }, 'nv-save', 'nv-err', function () {
+      $('nv-cant').value = '1'; $('nv-cli').value = ''; updateLive();
+    });
+  });
+  $('nv-prod').addEventListener('change', function () {
+    var p = prodByKey($('nv-prod').value);
+    if (p && p.ultimoPrecio) $('nv-precio').value = p.ultimoPrecio;
+    updateLive();
+  });
+  $('nv-cant').addEventListener('input', updateLive);
+  $('nv-precio').addEventListener('input', updateLive);
+
+  $('ng-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = num($('ng-monto').value);
+    if (!$('ng-fecha').value) { err('ng-err', 'Elige la fecha del gasto.'); return; }
+    if (m <= 0) { err('ng-err', 'Escribe el monto en pesos.'); $('ng-monto').focus(); return; }
+    err('ng-err', '');
+    save('nav_gastos', { fecha: $('ng-fecha').value, categoria: $('ng-cat').value, monto: m, nota: $('ng-nota').value.trim() }, 'ng-save', 'ng-err', function () { $('ng-monto').value = ''; $('ng-nota').value = ''; });
+  });
+
+  $('n-tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-t]'); if (!b) return; tab = b.getAttribute('data-t'); store('srNavTab', tab); arm = null; render(); });
+
+  $('nav').addEventListener('click', function (e) {
+    var s = e.target.closest('[data-sell]');
+    if (s) {
+      tab = 'vent'; store('srNavTab', tab); render();
+      $('nv-prod').value = s.getAttribute('data-sell');
+      var p = prodByKey($('nv-prod').value); if (p && p.ultimoPrecio) $('nv-precio').value = p.ultimoPrecio;
+      updateLive(); $('nv-cant').focus(); return;
+    }
+    var d = e.target.closest('[data-del]');
+    if (!d || !db || !canWrite) return;
+    var id = d.getAttribute('data-del');
+    if (arm !== id) { arm = id; render(); return; }
+    arm = null;
+    var t = id.slice(0, 1), docId = id.slice(2), errId = t === 'c' ? 'nc-err' : t === 'v' ? 'nv-err' : 'ng-err';
+    if (t === 'c') {
+      var c = compras.filter(function (x) { return x.id === docId; })[0], p = c && prodByKey(c.key || keyOf(c.producto));
+      if (p && p.stock - num(c.cantidad) < 0) { err(errId, 'No se puede eliminar: ya vendiste parte de esas unidades. Elimina primero las ventas de «' + p.nombre + '».'); render(); return; }
+    }
+    var col = t === 'c' ? 'nav_compras' : t === 'v' ? 'nav_ventas' : 'nav_gastos';
+    db.doc(col + '/' + docId).delete().then(null, function (er) { err(errId, writeError(er)); });
+  });
+
+  /* ---------- Arranque ---------- */
+  function listen(col, set) {
+    db.collection(col).orderBy('creado', 'desc').limit(2000).onSnapshot(function (snap) {
+      set(snap.docs.map(function (d) { var x = Object.assign({}, d.data() || {}); x.id = d.id; return x; }));
+      render();
+    }, function () {});
+  }
+  function start() {
+    if (started) return; started = true;
+    if (!(window.claude && window.claude.use)) { render(); return; }
+    Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function (r) {
+      db = r[0]; var user = r[1];
+      if (!db) { render(); return; }
+      return Promise.resolve(user && user.can ? user.can('data.write') : null).then(function (cw) {
+        canWrite = cw !== false;
+        listen('nav_compras', function (v) { compras = v; });
+        listen('nav_ventas', function (v) { ventas = v; });
+        listen('nav_gastos', function (v) { gastos = v; });
+        render();
+      });
+    }).catch(function () { render(); });
+  }
+
+  ['nc-fecha', 'nv-fecha', 'ng-fecha'].forEach(function (id) { $(id).value = today(); });
+  $('ng-cat').innerHTML = CATS.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
+  if (store('srSeccion') === 'nav') setSec('nav');
+})();
+</script>
