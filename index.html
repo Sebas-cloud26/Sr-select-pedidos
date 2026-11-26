@@ -277,6 +277,14 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
 .igrid span { color: var(--muted); } .igrid b { font-weight: 600; }
 .icard .btn { align-self: flex-start; padding: 8px 14px; }
 .ok { color: var(--ok); }
+.icard .ibody { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; }
+.icard .ithumb { width: 84px; height: 104px; border-radius: 10px; background: var(--surface-2); overflow: hidden; display: grid; place-items: center; color: var(--muted); border: 0; padding: 0; cursor: pointer; }
+.icard .ithumb img, .nthumb img, #nc-prev img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.icard .ithumb span { font-size: 11px; font-weight: 600; padding: 4px; text-align: center; line-height: 1.2; }
+.icard .iact { display: flex; flex-wrap: wrap; gap: 8px; }
+.nthumb { flex: none; width: 40px; height: 48px; border-radius: 8px; overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
+.lightbox { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.92); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+.lightbox img { max-width: 100%; max-height: 100%; border-radius: 12px; }
 @media (max-width: 600px) { .nav .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .nav .kpi { padding: 12px; } .nav .kpi dd { font-size: 17px; } .nav .kpi.net, .nav .kpi.stockk { grid-column: 1 / -1; } .nav .kpi.net dd { font-size: 24px; } }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 </style>
@@ -368,6 +376,9 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
     <div class="ucols" id="n-comp" hidden>
       <div class="box n-w"><h2>Registrar compra</h2>
         <form class="f" id="nc-form" novalidate>
+          <div class="photo"><div class="thumb" id="nc-prev"></div>
+            <div class="ctl"><label class="btn" for="nc-foto" style="cursor:pointer">Tomar o elegir foto</label><input id="nc-foto" type="file" accept="image/*">
+            <button type="button" class="btn" id="nc-quitar" hidden>Quitar foto</button><p class="hint" id="nc-fhint">Opcional. Si el producto ya tiene foto, esta la reemplaza.</p></div></div>
           <div class="fld"><label for="nc-prod">Producto</label><input id="nc-prod" maxlength="80" autocomplete="off" list="n-prods" placeholder="Ej. Árbol 1,80 m"></div>
           <div class="two">
             <div class="fld"><label for="nc-fecha">Fecha</label><input id="nc-fecha" type="date"></div>
@@ -421,6 +432,7 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
       <div class="box"><h2>Gastos</h2><div class="cats" id="n-gcats"></div><div id="n-glist"></div></div>
     </div>
     <datalist id="n-prods"></datalist>
+    <input type="file" id="n-cardfoto" accept="image/*" hidden>
   </section>
   <main class="grid" id="list" aria-live="polite"></main>
 </div>
@@ -1521,7 +1533,9 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
 
   var CATS = ['Transporte', 'Empaque', 'Publicidad', 'Puesto o local', 'Otros'];
   var db = null, canWrite = true, busy = false, started = false;
-  var compras = [], ventas = [], gastos = [];
+  var compras = [], ventas = [], gastos = [], fotos = [];
+  var assets = null, urlMap = {}, pick = null, cardKey = null;
+  var ICON_IMG = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 8"/></svg>';
   var tab = store('srNavTab') || 'inv', arm = null;
 
   /* ---------- Cambio de sección ---------- */
@@ -1554,6 +1568,91 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
   }
   function prodByKey(k) { return products().filter(function (p) { return p.key === k; })[0] || null; }
 
+  /* ---------- Fotos ---------- */
+  function fotoOf(k) {
+    var best = null;
+    fotos.forEach(function (f) { if (f.key === k && (!best || (f.creado || 0) > (best.creado || 0))) best = f; });
+    return best && (best.fotoId || best.thumb) ? best : null;
+  }
+  function fotoSrc(f) { return f ? (urlMap[f.fotoId] || f.url || (f.fotoId ? '/_blob/' + encodeURIComponent(f.fotoId) : '') || f.thumb) : ''; }
+  function fotoImg(k) {
+    var f = fotoOf(k); if (!f) return '';
+    return '<img src="' + esc(fotoSrc(f)) + '" alt="" data-nthumb="' + esc(f.thumb || '') + '">';
+  }
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (!t || t.tagName !== 'IMG' || !t.hasAttribute('data-nthumb')) return;
+    var th = t.getAttribute('data-nthumb');
+    if (th && t.getAttribute('src') !== th) t.src = th; else t.parentNode.innerHTML = ICON_IMG;
+  }, true);
+  function loadImage(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); res(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('img')); };
+      img.src = url;
+    });
+  }
+  function resize(img, max, q) {
+    var s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    var w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+    return new Promise(function (res, rej) { c.toBlob(function (b) { b ? res(b) : rej(new Error('blob')); }, 'image/jpeg', q); });
+  }
+  function toDataUrl(blob) {
+    return new Promise(function (res, rej) { var fr = new FileReader(); fr.onload = function () { res(String(fr.result)); }; fr.onerror = function () { rej(new Error('read')); }; fr.readAsDataURL(blob); });
+  }
+  function prepPhoto(file) {
+    return loadImage(file).then(function (img) { return Promise.all([resize(img, 1200, 0.8), resize(img, 220, 0.6)]); })
+      .then(function (b) { return toDataUrl(b[1]).then(function (u) { return { full: b[0], thumb: u }; }); });
+  }
+  function uploadMsg(e) {
+    var c = e && e.code;
+    if (c === 'quota_or_state') return 'El espacio para fotos está lleno.';
+    if (c === 'rate_limited') return 'Demasiadas subidas seguidas. Espera un momento.';
+    if (c === 'too_large' || c === 'unsupported_type') return 'Esa foto no se puede subir. Prueba con otra.';
+    return 'No se pudo subir la foto. Inténtalo de nuevo.';
+  }
+  function savePhoto(k, ph) {
+    if (!ph) return Promise.resolve();
+    if (!assets || !assets.upload) return Promise.reject({ code: 'no_assets' });
+    return assets.upload(ph.full, { type: 'image/jpeg' }).then(function (a) {
+      urlMap[a.id] = a.url;
+      return db.collection('nav_fotos').doc().set({ key: k, fotoId: a.id, url: a.url || '', thumb: ph.thumb, creado: Date.now() });
+    });
+  }
+  function clearPick() {
+    pick = null; $('nc-foto').value = ''; $('nc-prev').innerHTML = ICON_IMG; $('nc-quitar').hidden = true;
+    $('nc-fhint').textContent = 'Opcional. Si el producto ya tiene foto, esta la reemplaza.';
+  }
+  $('nc-foto').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0]; if (!file) return;
+    $('nc-fhint').textContent = 'Preparando foto…';
+    prepPhoto(file).then(function (ph) {
+      pick = ph; $('nc-prev').innerHTML = '<img src="' + ph.thumb + '" alt="">'; $('nc-quitar').hidden = false;
+      $('nc-fhint').textContent = 'Foto lista (' + Math.round(ph.full.size / 1024) + ' KB).';
+    }).catch(function () { $('nc-fhint').textContent = 'No se pudo leer esa imagen. Prueba con otra foto.'; });
+  });
+  $('nc-quitar').addEventListener('click', clearPick);
+  $('n-cardfoto').addEventListener('change', function (e) {
+    var file = e.target.files && e.target.files[0], k = cardKey; e.target.value = '';
+    if (!file || !k || !db || !canWrite) return;
+    var b = document.querySelector('[data-foto="' + CSS.escape(k) + '"]'); if (b) { b.disabled = true; b.textContent = 'Subiendo…'; }
+    prepPhoto(file).then(function (ph) { return savePhoto(k, ph); }).then(function () { render(); }, function (er) {
+      if (b) { b.disabled = false; b.textContent = 'Reintentar foto'; }
+      alert(er && er.code === 'no_assets' ? 'No se pueden subir fotos en esta página.' : uploadMsg(er));
+    });
+  });
+  function showPhoto(k) {
+    var f = fotoOf(k); if (!f) return;
+    var lb = document.createElement('div'); lb.className = 'lightbox'; lb.setAttribute('role', 'dialog'); lb.setAttribute('aria-label', 'Foto del producto');
+    lb.innerHTML = '<img src="' + esc(fotoSrc(f)) + '" alt="" data-nthumb="' + esc(f.thumb || '') + '">';
+    lb.addEventListener('click', function () { lb.remove(); });
+    document.addEventListener('keydown', function kd(ev) { if (ev.key === 'Escape') { lb.remove(); document.removeEventListener('keydown', kd); } });
+    document.body.appendChild(lb);
+  }
+
   /* ---------- Pintar ---------- */
   function kpi(label, value, cls, extra) { return '<dl class="kpi' + (cls ? ' ' + cls : '') + '"><dt>' + label + '</dt><dd>' + value + '</dd>' + (extra ? '<p class="hint">' + extra + '</p>' : '') + '</dl>'; }
   function sign(n) { return '<span class="' + (n < 0 ? 'neg' : '') + '">' + esc(money(n)) + '</span>'; }
@@ -1584,17 +1683,20 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
     // Inventario
     $('n-invlist').innerHTML = ps.length ? ps.map(function (p) {
       var cls = p.stock <= 0 ? 'out' : p.stock <= 2 ? 'low' : '';
-      return '<article class="icard"><div class="ih"><h3>' + esc(p.nombre) + '</h3><div class="stock ' + cls + '">' + esc(fmtNum(p.stock)) + '<small>' + (p.stock <= 0 ? 'Agotado' : 'Disponibles') + '</small></div></div>' +
+      var fi = fotoImg(p.key);
+      return '<article class="icard"><div class="ibody"><button type="button" class="ithumb" ' + (fi ? 'data-ver="' + esc(p.key) + '" aria-label="Ver foto de ' + esc(p.nombre) + '">' + fi : (canW ? 'data-foto="' + esc(p.key) + '" aria-label="Agregar foto">' + ICON_IMG : 'disabled>' + ICON_IMG)) + '</button><div>' +
+        '<div class="ih"><h3>' + esc(p.nombre) + '</h3><div class="stock ' + cls + '">' + esc(fmtNum(p.stock)) + '<small>' + (p.stock <= 0 ? 'Agotado' : 'Disponibles') + '</small></div></div></div></div>' +
         '<div class="igrid"><span>Comprado</span><b>' + esc(und(p.comprado)) + '</b><span>Costo promedio</span><b>' + esc(money(p.costoProm)) + '</b>' +
         '<span>Vendido</span><b>' + esc(und(p.vendido)) + '</b><span>Ventas</span><b>' + esc(money(p.ventas)) + '</b>' +
         '<span>Utilidad</span><b class="' + (p.utilidad < 0 ? 'neg' : p.vendido ? 'ok' : '') + '">' + esc(money(p.utilidad)) + '</b><span>Invertido</span><b>' + esc(money(p.invertido)) + '</b></div>' +
-        (canW && p.stock > 0 ? '<button type="button" class="btn" data-sell="' + esc(p.key) + '">Vender</button>' : '') + '</article>';
+        '<div class="iact">' + (canW && p.stock > 0 ? '<button type="button" class="btn" data-sell="' + esc(p.key) + '">Vender</button>' : '') +
+        (canW ? '<button type="button" class="btn" data-foto="' + esc(p.key) + '">' + (fi ? 'Cambiar foto' : 'Agregar foto') + '</button>' : '') + '</div></article>';
     }).join('') : '<div class="empty"><h2>El inventario está vacío</h2><p>' + (canW ? 'Ve a «Compras» y registra lo primero que compraste: producto, cantidad y precio. Aparecerá aquí con sus unidades disponibles.' : 'Cuando se registre la primera compra aparecerá aquí.') + '</p></div>';
 
     // Compras
     var cs = compras.slice().sort(byDate);
     $('n-clist').innerHTML = cs.length ? cs.map(function (c) {
-      return '<div class="gitem"><div class="gm"><b>' + esc(c.producto) + '</b><span>' + esc(fmtDate(c.fecha)) + ' · ' + esc(und(num(c.cantidad))) + ' × ' + esc(money(num(c.costo))) + (c.nota ? ' · ' + esc(c.nota) : '') + '</span></div>' +
+      return '<div class="gitem"><div class="nthumb">' + (fotoImg(c.key || keyOf(c.producto)) || ICON_IMG) + '</div><div class="gm"><b>' + esc(c.producto) + '</b><span>' + esc(fmtDate(c.fecha)) + ' · ' + esc(und(num(c.cantidad))) + ' × ' + esc(money(num(c.costo))) + (c.nota ? ' · ' + esc(c.nota) : '') + '</span></div>' +
         '<span class="ga">' + esc(money(num(c.total))) + '</span>' + delBtn('c', c.id, canW) + '</div>';
     }).join('') : '<p class="hint">Aún no hay compras.</p>';
 
@@ -1602,7 +1704,7 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
     fillSellSelect(ps);
     var vs = ventas.slice().sort(byDate);
     $('n-vlist').innerHTML = vs.length ? vs.map(function (v) {
-      return '<div class="gitem"><div class="gm"><b>' + esc(v.producto) + '</b><span>' + esc(fmtDate(v.fecha)) + ' · ' + esc(und(num(v.cantidad))) + ' × ' + esc(money(num(v.precio))) + (v.cliente ? ' · ' + esc(v.cliente) : '') + '</span></div>' +
+      return '<div class="gitem"><div class="nthumb">' + (fotoImg(v.key || keyOf(v.producto)) || ICON_IMG) + '</div><div class="gm"><b>' + esc(v.producto) + '</b><span>' + esc(fmtDate(v.fecha)) + ' · ' + esc(und(num(v.cantidad))) + ' × ' + esc(money(num(v.precio))) + (v.cliente ? ' · ' + esc(v.cliente) : '') + '</span></div>' +
         '<span class="ga">' + esc(money(num(v.total))) + '</span>' + delBtn('v', v.id, canW) + '</div>';
     }).join('') : '<p class="hint">Aún no hay ventas.</p>';
     updateLive();
@@ -1672,9 +1774,16 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
     if (tot <= 0) { err('nc-err', 'Escribe el costo por unidad o el total pagado.'); $('nc-unit').focus(); return; }
     if (!$('nc-fecha').value) { err('nc-err', 'Elige la fecha.'); return; }
     err('nc-err', '');
-    var k = keyOf(name), ex = prodByKey(k);
+    var k = keyOf(name), ex = prodByKey(k), ph = pick;
+    if (ph) {
+      if (busy) return;
+      busy = true; $('nc-save').disabled = true; $('nc-fhint').textContent = 'Subiendo foto…';
+      savePhoto(k, ph).then(function () { busy = false; $('nc-save').disabled = false; pick = null; clearPick(); $('nc-form').dispatchEvent(new Event('submit', { cancelable: true })); },
+        function (er) { busy = false; $('nc-save').disabled = false; $('nc-fhint').textContent = ''; err('nc-err', er && er.code === 'no_assets' ? 'No se pueden subir fotos en esta página. Quita la foto para guardar.' : uploadMsg(er)); });
+      return;
+    }
     save('nav_compras', { producto: ex ? ex.nombre : name, key: k, cantidad: q, costo: tot / q, total: tot, fecha: $('nc-fecha').value, nota: $('nc-nota').value.trim() }, 'nc-save', 'nc-err', function () {
-      ['nc-prod', 'nc-cant', 'nc-unit', 'nc-tot', 'nc-nota'].forEach(function (id) { $(id).value = ''; });
+      ['nc-prod', 'nc-cant', 'nc-unit', 'nc-tot', 'nc-nota'].forEach(function (id) { $(id).value = ''; }); clearPick();
       $('nc-prod').focus();
     });
   });
@@ -1719,6 +1828,8 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
       var p = prodByKey($('nv-prod').value); if (p && p.ultimoPrecio) $('nv-precio').value = p.ultimoPrecio;
       updateLive(); $('nv-cant').focus(); return;
     }
+    var vf = e.target.closest('[data-ver]'); if (vf) { showPhoto(vf.getAttribute('data-ver')); return; }
+    var bf = e.target.closest('[data-foto]'); if (bf) { if (db && canWrite) { cardKey = bf.getAttribute('data-foto'); $('n-cardfoto').click(); } return; }
     var d = e.target.closest('[data-del]');
     if (!d || !db || !canWrite) return;
     var id = d.getAttribute('data-del');
@@ -1743,20 +1854,23 @@ body.nav-mode .lede, body.nav-mode #summary, body.nav-mode .toolbar, body.nav-mo
   function start() {
     if (started) return; started = true;
     if (!(window.claude && window.claude.use)) { render(); return; }
-    Promise.all([window.claude.use('db'), window.claude.use('user')]).then(function (r) {
-      db = r[0]; var user = r[1];
+    Promise.all([window.claude.use('db'), window.claude.use('user'), window.claude.use('assets')]).then(function (r) {
+      db = r[0]; var user = r[1]; assets = r[2];
+      if (assets && assets.list) assets.list().then(function (res) { (res.assets || []).forEach(function (a) { urlMap[a.id] = a.url; }); render(); }, function () {});
       if (!db) { render(); return; }
       return Promise.resolve(user && user.can ? user.can('data.write') : null).then(function (cw) {
         canWrite = cw !== false;
         listen('nav_compras', function (v) { compras = v; });
         listen('nav_ventas', function (v) { ventas = v; });
         listen('nav_gastos', function (v) { gastos = v; });
+        listen('nav_fotos', function (v) { fotos = v; });
         render();
       });
     }).catch(function () { render(); });
   }
 
   ['nc-fecha', 'nv-fecha', 'ng-fecha'].forEach(function (id) { $(id).value = today(); });
+  $('nc-prev').innerHTML = ICON_IMG;
   $('ng-cat').innerHTML = CATS.map(function (c) { return '<option>' + esc(c) + '</option>'; }).join('');
   if (store('srSeccion') === 'nav') setSec('nav');
 })();
